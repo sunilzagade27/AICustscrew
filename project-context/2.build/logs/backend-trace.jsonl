@@ -1,0 +1,11 @@
+{"ts": "2026-08-25T00:23:47.719727+00:00", "event": "kickoff_start", "payload": {"symptom_len": 14}}
+{"ts": "2026-08-25T00:23:47.774035+00:00", "event": "kickoff_error", "payload": {"code": "CREW_TIMEOUT"}}
+{"ts": "2026-08-25T03:52:40.415419+00:00", "event": "kickoff_start", "payload": {"symptom_len": 14}}
+{"ts": "2026-08-25T03:52:40.466010+00:00", "event": "kickoff_error", "payload": {"code": "CREW_TIMEOUT"}}
+{"ts": "2026-08-25T03:53:17.344840+00:00", "event": "kickoff_error", "payload": {"code": "LLM_UNAVAILABLE"}}
+{"ts": "2026-08-25T03:55:50.266763+00:00", "event": "kickoff_start", "payload": {"symptom_len": 47}}
+{"ts": "2026-08-25T03:55:51.185066+00:00", "event": "kickoff_error", "payload": {"code": "INTERNAL"}}
+{"ts": "2026-08-25T03:56:59.337776+00:00", "event": "kickoff_start", "payload": {"symptom_len": 47}}
+{"ts": "2026-08-25T04:00:59.152919+00:00", "event": "kickoff_complete", "payload": {"ok": true}}
+{"ts": "2026-08-25T04:06:19.121347+00:00", "event": "kickoff_start", "payload": {"symptom_len": 14}}
+{"ts": "2026-08-25T04:06:19.175899+00:00", "event": "kickoff_error", "payload": {"code": "CREW_TIMEOUT"}}
