@@ -1,0 +1,40 @@
+[project]
+name = "custsuppcrew"
+version = "0.1.0"
+description = "custsuppcrew using crewAI"
+authors = [{ name = "Your Name", email = "you@example.com" }]
+requires-python = ">=3.10,<3.14"
+dependencies = [
+    "crewai[anthropic,tools]>=1.15.17,<2.0.0",
+    "fastapi>=0.115.0",
+    "uvicorn>=0.32.0",
+    "httpx>=0.27.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+]
+
+[project.scripts]
+custsuppcrew = "custsuppcrew.main:run"
+run_crew = "custsuppcrew.main:run"
+train = "custsuppcrew.main:train"
+replay = "custsuppcrew.main:replay"
+test = "custsuppcrew.main:test"
+run_with_trigger = "custsuppcrew.main:run_with_trigger"
+investigate-api = "custsuppcrew.api:run_api"
+stub-telemetry = "custsuppcrew.stubs.app:run_stubs"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.crewai]
+type = "crew"
+project_id = "79634c1c-bd5d-4c7c-af81-b9e4d75d1810"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]

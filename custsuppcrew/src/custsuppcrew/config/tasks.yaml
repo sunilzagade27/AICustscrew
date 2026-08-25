@@ -1,0 +1,157 @@
+# Sequential Task.context chain — keys must match @task methods in crew.py.
+# Trace: SAD §2 process view (task_plan → specialists → task_aggregate).
+# Kickoff input: {symptom}. Do not use kickoff_for_each.
+# Process: sequential (crew.py). Parallel specialists are Future Work.
+
+task_plan:
+  description: >
+    Analyze this production symptom or alert paste and write a numbered
+    investigation plan before specialists run.
+
+    Symptom:
+    {symptom}
+
+    Requirements:
+    - Numbered steps with ordinal, description, and agent key
+    - agents_involved from: kubernetes_specialist, logs_specialist,
+      metrics_specialist, runbooks_specialist
+    - complexity: low, medium, or high (or equivalent)
+    - auto_execute_reads must be true (read plan only; not a mutation flag)
+    - Do not call cluster I/O tools
+    - Do not invent telemetry
+  expected_output: >
+    JSON without markdown code fences, with keys: steps (array of ordinal,
+    description, agent), agents_involved (array of agent keys), complexity
+    (string), auto_execute_reads (boolean true).
+  agent: supervisor
+  markdown: false
+
+task_kubernetes:
+  description: >
+    Execute the Kubernetes portion of the investigation plan for this symptom.
+
+    Symptom:
+    {symptom}
+
+    Use only read-only tools (get_pod_status, get_node_status,
+    get_deployment_status, get_cluster_events) when they are bound. If tools
+    are unbound or return empty, list them in empty_tools and do not invent
+    pods, nodes, deployments, or events. Cite tool plus record_id on every
+    state-asserting insight.
+  expected_output: >
+    JSON without markdown code fences, with keys: specialist
+    (kubernetes_specialist), insights (array of text, source.tool,
+    source.record_id, grounded true), empty_tools (array of tool names),
+    optional error Diagnostic string.
+  agent: kubernetes_specialist
+  context:
+    - task_plan
+  markdown: false
+
+task_logs:
+  description: >
+    Search and pattern-count logs relevant to this symptom and the plan.
+
+    Symptom:
+    {symptom}
+
+    Use only read-only tools (search_logs, count_log_patterns) when bound.
+    Redact secrets from snippets. If tools are unbound or empty, list them in
+    empty_tools and do not invent log lines. Cite tool plus record_id on every
+    state-asserting insight.
+  expected_output: >
+    JSON without markdown code fences, with keys: specialist (logs_specialist),
+    insights (array of text, source.tool, source.record_id, grounded true),
+    empty_tools (array of tool names), optional error Diagnostic string.
+  agent: logs_specialist
+  context:
+    - task_plan
+    - task_kubernetes
+  markdown: false
+
+task_metrics:
+  description: >
+    Pull latency, error, saturation, and availability trends for this symptom
+    and the plan.
+
+    Symptom:
+    {symptom}
+
+    Use only read-only tools (get_performance_metrics, get_error_metrics,
+    get_availability_metrics) when bound. Numeric claims must match payloads.
+    If tools are unbound or empty, list them in empty_tools and do not invent
+    series. Cite tool plus series/record_id on every state-asserting insight.
+  expected_output: >
+    JSON without markdown code fences, with keys: specialist
+    (metrics_specialist), insights (array of text, source.tool,
+    source.record_id, grounded true), empty_tools (array of tool names),
+    optional error Diagnostic string.
+  agent: metrics_specialist
+  context:
+    - task_plan
+    - task_kubernetes
+    - task_logs
+  markdown: false
+
+task_runbooks:
+  description: >
+    Retrieve matching playbooks, escalation procedures, and troubleshooting
+    steps for this symptom and prior findings.
+
+    Symptom:
+    {symptom}
+
+    Use only read-only tools (search_runbooks, get_playbook,
+    get_escalation_procedure) when bound. Recommendations are unexecuted human
+    instructions. If tools are unbound or empty, list them in empty_tools and
+    do not invent documents. Cite document/section identifiers.
+  expected_output: >
+    JSON without markdown code fences, with keys: specialist
+    (runbooks_specialist), insights (array of text, source.tool,
+    source.record_id, grounded true), empty_tools (array of tool names),
+    optional error Diagnostic string.
+  agent: runbooks_specialist
+  context:
+    - task_plan
+    - task_kubernetes
+    - task_logs
+    - task_metrics
+  markdown: false
+
+task_aggregate:
+  description: >
+    Aggregate the plan and specialist outputs into a cited investigation report
+    a human SRE can verify.
+
+    Original symptom:
+    {symptom}
+
+    Rules:
+    - Include headings Key Insights, Next Steps, Critical Alerts, Troubleshooting Steps
+    - Empty sections allowed only if explicitly labeled as no findings
+    - Each Key Insight that asserts cluster, log, metric, or runbook state must
+      include source (tool plus record/id) and specialist
+    - Omit or flag uncited state claims as Diagnostic
+    - kubectl or playbook remediation must be unexecuted instructions
+      (executed: false)
+    - Set stub_data to true so operators do not treat this as production telemetry
+    - If a specialist failed, include a partial report plus diagnostic
+    - Do not invent substitute findings
+  expected_output: >
+    JSON without markdown code fences, with keys: key_insights (array of text,
+    source, specialist), next_steps (array; kubectl/playbook items executed false),
+    critical_alerts (array; or explicitly no findings), troubleshooting_steps
+    (array; or explicitly no findings), stub_data (true), optional diagnostic.
+  agent: supervisor
+  context:
+    - task_plan
+    - task_kubernetes
+    - task_logs
+    - task_metrics
+    - task_runbooks
+  markdown: false
+  guardrail: >
+    Output must include the headings or JSON keys Key Insights, Next Steps,
+    Critical Alerts, and Troubleshooting Steps. State-asserting insights must
+    include a source identifier. Do not mark remediation as executed.
+    stub_data must be true.
