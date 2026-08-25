@@ -17,7 +17,7 @@ libraries:
 
 ui:
   theme: system
-  visual_style: minimal
+  visual_style: mini
   prefer_modals: false
 
 coding_standards:
