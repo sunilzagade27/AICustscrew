@@ -36,8 +36,8 @@ export function InputsForm({
           value={symptom}
           disabled={disabled}
           onChange={(e) => onSymptomChange(e.target.value)}
-          placeholder="e.g. API response times have degraded 3x in the last hour"
-        />
+        placeholder="Paste an alert or natural-language symptom"
+            />
         {error ? (
           <p className="error" role="alert">
             {error}

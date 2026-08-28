@@ -8,7 +8,8 @@ import { getRunStatus, startRun } from "./services/runService";
 import type { HistoryEntry } from "./types";
 import "./App.css";
 
-const POLL_MS = 400;
+const POLL_MS = 1500;
+const POLL_TIMEOUT_MS = 610_000;
 const MAX_SYMPTOM = 8192;
 
 export default function App() {
@@ -16,6 +17,7 @@ export default function App() {
   const [symptom, setSymptom] = useState("");
   const [inputError, setInputError] = useState<string | null>(null);
   const [runId, setRunId] = useState<string | null>(null);
+  const [planPreview, setPlanPreview] = useState<string | null>(null);
   const [activeResult, setActiveResult] = useState<HistoryEntry | null>(null);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const pollRef = useRef<number | null>(null);
@@ -56,12 +58,22 @@ export default function App() {
     try {
       const started = await startRun({ symptom: trimmed });
       setRunId(started.runId);
+      setPlanPreview(null);
       setActiveResult(null);
 
-      clearPoll();
-      pollRef.current = window.setInterval(async () => {
+      const startedAt = Date.now();
+      const pollOnce = async () => {
         try {
+          if (Date.now() - startedAt > POLL_TIMEOUT_MS) {
+            clearPoll();
+            setInputError("Investigation timed out waiting for the backend (600s cap).");
+            dispatch({ type: "STATUS_ERROR" });
+            return;
+          }
           const status = await getRunStatus(started.runId);
+          if (status.planPreview) {
+            setPlanPreview(status.planPreview);
+          }
           if (status.status === "running") return;
 
           clearPoll();
@@ -79,6 +91,11 @@ export default function App() {
             summary: status.summary ?? "",
             findings: status.findings ?? [],
             sources: status.sources ?? [],
+            stubData: status.stubData !== false,
+            keyInsights: status.keyInsights ?? [],
+            nextSteps: status.nextSteps ?? [],
+            criticalAlerts: status.criticalAlerts ?? [],
+            troubleshootingSteps: status.troubleshootingSteps ?? [],
           };
           setActiveResult(entry);
           setHistory((prev) => [entry, ...prev]);
@@ -88,6 +105,12 @@ export default function App() {
           setInputError(err instanceof Error ? err.message : "Status poll failed.");
           dispatch({ type: "STATUS_ERROR" });
         }
+      };
+
+      clearPoll();
+      void pollOnce();
+      pollRef.current = window.setInterval(() => {
+        void pollOnce();
       }, POLL_MS);
     } catch (err) {
       setInputError(err instanceof Error ? err.message : "Failed to start run.");
@@ -98,6 +121,7 @@ export default function App() {
   function handleNewRun() {
     clearPoll();
     setRunId(null);
+    setPlanPreview(null);
     setActiveResult(null);
     setInputError(null);
     dispatch({ type: "NEW_RUN" });
@@ -120,6 +144,10 @@ export default function App() {
         <p className="muted">
           Single route · FSM: <span className="mono">{fsm}</span>
         </p>
+        <p className="muted future-work">
+          Future Work: Slack/Teams intake, PagerDuty inbound, executive report
+          style, auto-remediation.
+        </p>
       </header>
 
       <main className="layout">
@@ -134,7 +162,9 @@ export default function App() {
             />
           ) : null}
 
-          {fsm === "running" ? <RunStatus runId={runId} /> : null}
+          {fsm === "running" ? (
+            <RunStatus runId={runId} planPreview={planPreview} stubData />
+          ) : null}
 
           {fsm === "done" && activeResult ? (
             <ResultsView entry={activeResult} onNewRun={handleNewRun} />

@@ -1,4 +1,4 @@
-import type { HistoryEntry } from "../types";
+import type { HistoryEntry, ReportLine } from "../types";
 
 interface ResultsViewProps {
   entry: HistoryEntry;
@@ -9,27 +9,63 @@ export function ResultsView({ entry, onNewRun }: ResultsViewProps) {
   return (
     <section className="panel" aria-labelledby="results-heading">
       <h2 id="results-heading">Results</h2>
-      <p className="stub-banner" role="status">
-        Demo / stub data — not live cluster telemetry.
-      </p>
+      {entry.stubData !== false ? (
+        <p className="stub-banner" role="status">
+          Demo / stub data — not live cluster telemetry.
+        </p>
+      ) : null}
       <p className="mono muted">runId: {entry.runId}</p>
       <p className="muted">Completed: {entry.completedAt}</p>
-      <h3>Summary</h3>
-      <p>{entry.summary}</p>
-      <h3>Findings</h3>
-      <ul className="findings">
-        {entry.findings.map((f) => (
-          <li key={f.sourceId}>
-            <strong>{f.specialist}</strong>: {f.text}{" "}
-            <span className="mono muted">[{f.sourceId}]</span>
-          </li>
-        ))}
-      </ul>
+      <ReportSection title="Key Insights" lines={entry.keyInsights} />
+      <ReportSection title="Next Steps" lines={entry.nextSteps} showExecuted />
+      <ReportSection title="Critical Alerts" lines={entry.criticalAlerts} />
+      <ReportSection
+        title="Troubleshooting Steps"
+        lines={entry.troubleshootingSteps}
+      />
       <h3>Sources</h3>
-      <p className="mono">{entry.sources.join(", ")}</p>
+      {entry.sources.length > 0 ? (
+        <p className="mono">{entry.sources.join(", ")}</p>
+      ) : (
+        <p className="muted">No findings.</p>
+      )}
       <button type="button" onClick={onNewRun}>
         New research run
       </button>
     </section>
+  );
+}
+
+function ReportSection({
+  title,
+  lines,
+  showExecuted = false,
+}: {
+  title: string;
+  lines: ReportLine[];
+  showExecuted?: boolean;
+}) {
+  return (
+    <>
+      <h3>{title}</h3>
+      {lines.length === 0 ? (
+        <p className="muted">No findings.</p>
+      ) : (
+        <ul className="findings">
+          {lines.map((line, index) => (
+            <li key={`${title}-${line.sourceId ?? index}`}>
+              {line.specialist ? <strong>{line.specialist}: </strong> : null}
+              {line.text}
+              {showExecuted && line.executed === false ? (
+                <span className="muted"> (not executed)</span>
+              ) : null}
+              {line.sourceId ? (
+                <span className="mono muted"> [{line.sourceId}]</span>
+              ) : null}
+            </li>
+          ))}
+        </ul>
+      )}
+    </>
   );
 }

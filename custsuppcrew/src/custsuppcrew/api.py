@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import queue
+import threading
 from typing import Any
 
 from fastapi import FastAPI, Query, Request
@@ -80,6 +81,7 @@ def _want_json(request: Request, stream: bool | None) -> bool:
 async def create_investigation(
     request: Request,
     stream: bool | None = Query(default=None),
+    wait: bool | None = Query(default=None),
 ) -> JSONResponse | StreamingResponse:
     try:
         body = await request.json()
@@ -108,6 +110,8 @@ async def create_investigation(
     }
 
     try:
+        if wait is False:
+            return _run_async(investigation_id, symptom)
         if _want_json(request, stream):
             return _run_json(investigation_id, symptom)
         return StreamingResponse(
@@ -118,6 +122,57 @@ async def create_investigation(
     except Exception:
         FLIGHT.release()
         raise
+
+
+def _apply_event(investigation_id: str, item: dict[str, Any]) -> None:
+    current = dict(_store.get(investigation_id) or {})
+    event = item.get("event")
+    data = item.get("data")
+    if event == "plan":
+        current["plan"] = data
+    elif event == "specialist_result":
+        results = list(current.get("specialist_results") or [])
+        results.append(data)
+        current["specialist_results"] = results
+    elif event == "report":
+        current["report"] = data
+    elif event in ("error", "diagnostic"):
+        current["diagnostic"] = data
+        if event == "error":
+            current["status"] = "failed"
+    _store[investigation_id] = current
+
+
+def _run_async(investigation_id: str, symptom: str) -> JSONResponse:
+    event_q: queue.Queue[Any] = queue.Queue()
+
+    def _on_done(snapshot: dict[str, Any] | None, error: CrewRunError | None) -> None:
+        current = _store.get(investigation_id, {})
+        if snapshot is not None:
+            _store[investigation_id] = {**current, **snapshot, "status": "complete"}
+        elif error is not None:
+            _store[investigation_id] = {
+                **current,
+                "status": "failed",
+                "diagnostic": error_body(error.code, error.message),
+            }
+
+    start_background(
+        symptom,
+        event_q,
+        _on_done,
+        on_thread_done=FLIGHT.release,
+    )
+
+    def _pump() -> None:
+        while True:
+            item = event_q.get()
+            if item is SENTINEL:
+                break
+            _apply_event(investigation_id, item)
+
+    threading.Thread(target=_pump, daemon=True).start()
+    return JSONResponse(status_code=202, content=_store[investigation_id])
 
 
 def _run_json(investigation_id: str, symptom: str) -> JSONResponse:
@@ -164,6 +219,7 @@ def _sse_generator(investigation_id: str, symptom: str):
         item = event_q.get()
         if item is SENTINEL:
             break
+        _apply_event(investigation_id, item)
         yield _sse(item.get("event", "diagnostic"), item.get("data"))
 
 

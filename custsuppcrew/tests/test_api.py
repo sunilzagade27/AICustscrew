@@ -50,6 +50,20 @@ def test_unknown_investigation() -> None:
     assert response.status_code == 404
 
 
+def test_cors_preflight_vite_origins() -> None:
+    for origin in ("http://localhost:3000", "http://127.0.0.1:3000"):
+        response = client.options(
+            "/v1/investigations",
+            headers={
+                "Origin": origin,
+                "Access-Control-Request-Method": "POST",
+                "Access-Control-Request-Headers": "content-type",
+            },
+        )
+        assert response.status_code in (200, 204)
+        assert response.headers.get("access-control-allow-origin") == origin
+
+
 def test_busy_returns_429() -> None:
     assert FLIGHT.try_acquire() is True
     try:
@@ -80,6 +94,34 @@ def test_kickoff_cap_returns_crew_timeout(monkeypatch: pytest.MonkeyPatch) -> No
     with pytest.raises(CrewRunError) as err:
         run_kickoff("api latency 3x")
     assert err.value.code == "CREW_TIMEOUT"
+
+
+def test_async_start_returns_202(monkeypatch: pytest.MonkeyPatch) -> None:
+    def fake_start(
+        symptom: str,
+        event_q: object,
+        on_done: object,
+        on_thread_done: object = None,
+    ) -> None:
+        if on_thread_done:
+            on_thread_done()  # type: ignore[operator]
+        from custsuppcrew.investigation import SENTINEL
+
+        event_q.put(SENTINEL)  # type: ignore[union-attr]
+
+    monkeypatch.setattr("custsuppcrew.api.start_background", fake_start)
+    response = client.post(
+        "/v1/investigations?wait=false",
+        json={"symptom": "pods crash looping"},
+    )
+    assert response.status_code == 202
+    body = response.json()
+    assert body["status"] == "running"
+    assert body["investigation_id"]
+    assert body["stub_data"] is True
+    follow = client.get(f"/v1/investigations/{body['investigation_id']}")
+    assert follow.status_code == 200
+    assert follow.json()["investigation_id"] == body["investigation_id"]
 
 
 def test_temperature_policy() -> None:
