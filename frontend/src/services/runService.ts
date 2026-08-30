@@ -37,7 +37,7 @@ interface ErrorEnvelope {
   error?: { code?: string; message?: string; diagnostic?: string };
 }
 
-interface InvestigationSnapshot {
+export interface InvestigationSnapshot {
   investigation_id?: string;
   status?: string;
   plan?: unknown;
@@ -123,7 +123,7 @@ export async function getRunStatus(runId: string): Promise<GetRunStatusResponse>
   return mapSnapshot(runId, body);
 }
 
-function mapSnapshot(
+export function mapSnapshot(
   runId: string,
   body: InvestigationSnapshot,
 ): GetRunStatusResponse {

@@ -48,6 +48,10 @@ def test_missing_symptom_rejected() -> None:
 def test_unknown_investigation() -> None:
     response = client.get("/v1/investigations/does-not-exist")
     assert response.status_code == 404
+    body = response.json()["error"]
+    assert body["code"] == "INTERNAL"
+    assert body["message"]
+    assert "diagnostic" in body
 
 
 def test_cors_preflight_vite_origins() -> None:
@@ -113,6 +117,7 @@ def test_async_start_returns_202(monkeypatch: pytest.MonkeyPatch) -> None:
     response = client.post(
         "/v1/investigations?wait=false",
         json={"symptom": "pods crash looping"},
+        headers={"accept": "application/json"},
     )
     assert response.status_code == 202
     body = response.json()
@@ -122,6 +127,124 @@ def test_async_start_returns_202(monkeypatch: pytest.MonkeyPatch) -> None:
     follow = client.get(f"/v1/investigations/{body['investigation_id']}")
     assert follow.status_code == 200
     assert follow.json()["investigation_id"] == body["investigation_id"]
+
+
+def test_wait_false_empty_symptom_is_400() -> None:
+    response = client.post(
+        "/v1/investigations?wait=false",
+        json={"symptom": "  "},
+    )
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "VALIDATION_ERROR"
+    assert FLIGHT.busy() is False
+
+
+def test_oversized_symptom_rejected() -> None:
+    response = client.post(
+        "/v1/investigations?wait=false",
+        json={"symptom": "x" * 8193},
+    )
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "VALIDATION_ERROR"
+    assert FLIGHT.busy() is False
+
+
+def test_invalid_json_body_rejected() -> None:
+    response = client.post(
+        "/v1/investigations",
+        content=b"not-json",
+        headers={"content-type": "application/json"},
+    )
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "VALIDATION_ERROR"
+
+
+def test_poll_shows_plan_before_complete(monkeypatch: pytest.MonkeyPatch) -> None:
+    from custsuppcrew.investigation import SENTINEL
+
+    def fake_start(
+        symptom: str,
+        event_q: object,
+        on_done: object,
+        on_thread_done: object = None,
+    ) -> None:
+        event_q.put(  # type: ignore[union-attr]
+            {
+                "event": "plan",
+                "data": {
+                    "steps": [
+                        {
+                            "ordinal": 1,
+                            "description": "Inspect pods",
+                            "agent": "kubernetes_specialist",
+                        }
+                    ]
+                },
+            }
+        )
+        event_q.put(SENTINEL)  # type: ignore[union-attr]
+        if on_thread_done:
+            on_thread_done()  # type: ignore[operator]
+
+    monkeypatch.setattr("custsuppcrew.api.start_background", fake_start)
+    response = client.post(
+        "/v1/investigations?wait=false",
+        json={"symptom": "pods crash looping"},
+    )
+    assert response.status_code == 202
+    investigation_id = response.json()["investigation_id"]
+    snapshot = None
+    for _ in range(20):
+        time.sleep(0.02)
+        snapshot = client.get(f"/v1/investigations/{investigation_id}").json()
+        if snapshot.get("plan"):
+            break
+    assert snapshot is not None
+    assert snapshot["status"] == "running"
+    assert snapshot["plan"]["steps"][0]["agent"] == "kubernetes_specialist"
+    assert snapshot["report"] is None
+
+
+def test_poll_failed_status_from_error_event(monkeypatch: pytest.MonkeyPatch) -> None:
+    from custsuppcrew.investigation import SENTINEL
+
+    def fake_start(
+        symptom: str,
+        event_q: object,
+        on_done: object,
+        on_thread_done: object = None,
+    ) -> None:
+        event_q.put(  # type: ignore[union-attr]
+            {
+                "event": "error",
+                "data": {
+                    "error": {
+                        "code": "LLM_UNAVAILABLE",
+                        "message": "provider down",
+                    }
+                },
+            }
+        )
+        event_q.put(SENTINEL)  # type: ignore[union-attr]
+        if on_thread_done:
+            on_thread_done()  # type: ignore[operator]
+
+    monkeypatch.setattr("custsuppcrew.api.start_background", fake_start)
+    response = client.post(
+        "/v1/investigations?wait=false",
+        json={"symptom": "pods crash looping"},
+    )
+    assert response.status_code == 202
+    investigation_id = response.json()["investigation_id"]
+    snapshot = None
+    for _ in range(20):
+        time.sleep(0.02)
+        snapshot = client.get(f"/v1/investigations/{investigation_id}").json()
+        if snapshot.get("status") == "failed":
+            break
+    assert snapshot is not None
+    assert snapshot["status"] == "failed"
+    assert snapshot["diagnostic"]["error"]["code"] == "LLM_UNAVAILABLE"
 
 
 def test_temperature_policy() -> None:
