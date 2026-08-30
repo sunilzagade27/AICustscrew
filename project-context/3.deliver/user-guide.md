@@ -180,3 +180,11 @@ Full runbook: `project-context/3.deliver/deploy.md` (hosting, env matrix, access
 - **Prompt Trace:** Omitted. No production-facing model execution; no secret values copied into this artifact.
 - **Tooling:** Read user-guide template, PRD §1–2, frontend-functional-spec §1–4, integration.md run/verify, qa.md gaps, deploy.md runbook, `.env.example` names. Wrote this file only (plus a deploy.md pointer/Audit). Did not start services or change application logic.
 - **Prohibited actions:** No live infrastructure, no secret values, no FE/BE code changes.
+
+- **Timestamp:** 2026-08-30T14:00:00-04:00
+- **Persona id:** `devops-eng`
+- **Action:** `document-user-guide` (idempotent re-verify)
+- **Resolved runtime:** `crewai` (`AAMAD_TARGET_RUNTIME` unset; `aamad.config.yml` `runtime.target: crewai`)
+- **Prompt Trace:** Omitted. No production-facing model execution; no secret values copied into this artifact.
+- **Tooling:** Re-read template headings and this file. Self-check: sections 1–7 plus Sources, Assumptions, Open Questions, Audit are present. `setup.md` still missing. No product-capability drift vs PRD/integration/deploy. Did not rewrite body. Did not start services.
+- **Prohibited actions:** No live infrastructure, no secret values, no FE/BE code changes.

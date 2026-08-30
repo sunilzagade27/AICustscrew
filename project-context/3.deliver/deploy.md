@@ -334,3 +334,11 @@ None. User guide recorded. Live stack start and any deploy job remain blocked un
 - **Prompt Trace:** Omitted. No production-facing model execution; no secret values copied into this artifact.
 - **Tooling:** Read `.cursor/templates/user-guide-template.md`, PRD, frontend-functional-spec, integration.md, qa.md, deploy.md runbook. Wrote `project-context/3.deliver/user-guide.md`. Did not start services. Did not modify application or agent business logic.
 - **Prohibited actions:** No live infrastructure, no secret values, no FE/BE code changes.
+
+- **Timestamp:** 2026-08-30T14:00:00-04:00
+- **Persona id:** `devops-eng`
+- **Action:** `document-user-guide` (idempotent re-verify)
+- **Resolved runtime:** `crewai` (`AAMAD_TARGET_RUNTIME` unset; `aamad.config.yml` `runtime.target: crewai`)
+- **Prompt Trace:** Omitted. No production-facing model execution; no secret values copied into this artifact.
+- **Tooling:** Confirmed `user-guide.md` still satisfies the template (sections 1–7 + provenance). No rewrite. `setup.md` still absent.
+- **Prohibited actions:** No live infrastructure, no secret values, no FE/BE code changes.
