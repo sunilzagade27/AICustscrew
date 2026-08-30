@@ -1,8 +1,8 @@
-# Deploy — Release readiness, deploy definition, CI
+# Deploy — Release readiness, deploy definition, CI, runbook
 
 ## Summary
 
-Phase 3 Deliver continues after a **conditional** QA/security gate. `*prepare-release` recorded version `0.1.0` and scoped gaps. `*define-deploy` added loopback Compose. This increment is **`*configure-cicd` only**: GitHub Actions lint, test, and build. No completed runbook, no user guide, **no live deploy**, and **no `docker compose up`**.
+Phase 3 Deliver continues after a **conditional** QA/security gate. `*prepare-release` recorded version `0.1.0`. `*define-deploy` added loopback Compose. `*configure-cicd` added lint/test/build CI. `*document-deploy` added the operator runbook. This increment is **`*document-user-guide`**: `project-context/3.deliver/user-guide.md`. **No live deploy** and **no `docker compose up`** in this session.
 
 **Release version:** `0.1.0` (from `custsuppcrew/pyproject.toml` and `frontend/package.json`).
 
@@ -126,38 +126,131 @@ SAD §5: lint, test, and build only. No deploy job. Workflow does not use reposi
 - `ANTHROPIC_API_KEY` or any secret
 - Promotion to a host
 
-## Required env var **names** (no values)
+## Runbook (`*document-deploy`)
 
-From `custsuppcrew/.env.example` and `frontend/.env.example`:
+Operator procedures for the **local** `0.1.0` MVP. Hosting target is a developer laptop (or single small VM) running SAD §5 three services. Cloud, AgentCore, and any non-loopback bind are out of scope.
 
-- `ANTHROPIC_API_KEY` — required for live LLM
-- `MODEL` — optional; example `anthropic/claude-sonnet-4-20250514`
-- `LLM_TEMPERATURE` — optional
-- `STUB_K8S_BASE_URL`, `STUB_LOGS_BASE_URL`, `STUB_METRICS_BASE_URL`, `STUB_RUNBOOKS_BASE_URL` — compose sets `http://stubs:8081`; local processes default `http://127.0.0.1:8081`
-- `VITE_API_BASE_URL` — compose build arg `http://127.0.0.1:8000`
-- Unused / commented: `GATEWAY_ACCESS_TOKEN`, `DEMO_API_TOKEN`, `CREWAI_STORAGE_DIR`, `OPENAI_API_KEY`
+### Hosting
 
-## Access control (policy)
+| Mode | When to use | UI | API | Stubs |
+| --- | --- | --- | --- | --- |
+| **Compose** (SAD default) | Packaged local stack | `http://127.0.0.1:3000` (nginx) | `127.0.0.1:8000` | `127.0.0.1:8081` |
+| **Local processes** (equivalent) | Day-to-day Build/QA | `http://127.0.0.1:3000` (Vite `npm run dev`) | `investigate-api` → `127.0.0.1:8000` | `stub-telemetry` → `127.0.0.1:8081` |
 
-- Local demo: unauthenticated (AD-09). Least privilege: GET-only tools; single investigation per API process.
-- Secrets: operator `.env` only; never commit values. Nested `guide_creator_flow/.env` must stay out of git (S-01). Image build excludes that directory.
-- Host publish is loopback-only so unauthenticated LLM spend (S-04) stays on localhost unless the operator changes port mappings.
-- Enterprise IAM/SSO/network segmentation: Future Work (PRD FR-207).
+| Check | URL |
+| --- | --- |
+| Frontend | `GET http://127.0.0.1:3000/` → HTTP 200 |
+| API | `GET http://127.0.0.1:8000/health` |
+| Stubs | `GET http://127.0.0.1:8081/health` |
 
-## Rollback (preview)
+Do not change Compose host mappings from `127.0.0.1`. Do not start `run_api` / `run_stubs` with a non-loopback bind.
 
-Stop the `api` service (`docker compose stop api` or stop `investigate-api`). IR remains on existing PagerDuty/Slack (SAD). No cluster mutation in MVP, so there is no agent-applied cluster rollback.
+### Environment variable matrix (names only)
+
+Copy `custsuppcrew/.env.example` → `custsuppcrew/.env` on the operator machine. Never commit `.env`. Never paste values into this artifact.
+
+| Name | Required | Consumed by | Compose | Local processes | Notes |
+| --- | --- | --- | --- | --- | --- |
+| `ANTHROPIC_API_KEY` | Yes for a live LLM kickoff | `api` | `--env-file` interpolation | dotenv / shell | Empty key → `LLM_UNAVAILABLE` on kickoff. Health does not need it. |
+| `MODEL` | No | `api` | default `anthropic/claude-sonnet-4-20250514` | same default in `.env.example` | |
+| `LLM_TEMPERATURE` | No | `api` | default `0.1` | same | Ignored for gpt-5 / o-series (backend.md). |
+| `STUB_K8S_BASE_URL` | No | `api` tools | **set** `http://stubs:8081` | default `http://127.0.0.1:8081` | Compose must use the service DNS name. |
+| `STUB_LOGS_BASE_URL` | No | `api` tools | **set** `http://stubs:8081` | default `http://127.0.0.1:8081` | |
+| `STUB_METRICS_BASE_URL` | No | `api` tools | **set** `http://stubs:8081` | default `http://127.0.0.1:8081` | |
+| `STUB_RUNBOOKS_BASE_URL` | No | `api` tools | **set** `http://stubs:8081` | default `http://127.0.0.1:8081` | |
+| `VITE_API_BASE_URL` | No | frontend build | Docker **build arg** `http://127.0.0.1:8000` | `frontend/.env` / `.env.example` | Browser origin talks to host loopback, not `api:8000`. |
+| `OPENAI_API_KEY` | No | unused in MVP path | not passed | listed in example | Leave empty unless an operator later switches models. |
+| `GATEWAY_ACCESS_TOKEN` | No | unused | not passed | commented in example | AgentCore / Gateway Future Work. |
+| `DEMO_API_TOKEN` | No | unused | not passed | commented in example | SAD Open Question. Required before any non-loopback API. |
+| `CREWAI_STORAGE_DIR` | No | unused | not passed | commented in example | Memory is off for MVP reproducibility. |
+
+### Access control
+
+| Surface | Policy |
+| --- | --- |
+| Chat / investigation API | Unauthenticated on localhost (SAD AD-09, PRD). Anyone who can reach `:8000` can spend LLM budget (S-04). Loopback publish is the control. |
+| Stub telemetry | Read-only GET fixtures. No cluster credentials. |
+| Tools | YAML allowlist; mutating name fragments rejected at bind (AC-007 / AC-009). |
+| Concurrency | One in-flight investigation per API process (`429 BUSY`). |
+| Secrets | Operator `.env` only. Do not `git add` `.env` or `custsuppcrew/src/custsuppcrew/guide_creator_flow/` (S-01). Compose `.dockerignore` excludes that tree. |
+| CI | `contents: read`. No repository secrets. No deploy job. |
+| Vite dev (`npm run dev`) | `host: true` may advertise a LAN URL (S-03). Prefer `http://127.0.0.1:3000`. Compose nginx is loopback-only. |
+| Deferred | SSO / IAM / network segmentation (PRD FR-207). Optional `DEMO_API_TOKEN` before LAN/cloud expose. |
+
+Least privilege for operators: only the person running the demo holds `ANTHROPIC_API_KEY`. Deployment credentials are not used (no cloud account in MVP).
+
+### Manual promotion
+
+There is no automated promotion. CI does not deploy.
+
+1. Confirm GitHub Actions `CI` is green on the commit (`backend` + `frontend`).
+2. Confirm `guide_creator_flow/` is still untracked (`git status`).
+3. On the laptop: `cp custsuppcrew/.env.example custsuppcrew/.env` and set `ANTHROPIC_API_KEY` (value stays on that machine).
+4. **Only after the operator authorizes a start:** from repo root, `docker compose --env-file custsuppcrew/.env up --build`.
+5. Verify the three health URLs in the Hosting table.
+6. Optional demo: open `http://127.0.0.1:3000`, submit a non-empty symptom (fixture text in integration.md). Expect plan then Results. AC-006 may show specialist Key Insights and **No findings.** for other headings (`qa.md`).
+7. Full kickoff can take several minutes (QA live run ~288s; cap 600s). One investigation at a time.
+
+**This runbook increment did not execute step 4.**
+
+### Local-process start (no Compose)
+
+From `backend.md` / `integration.md` (`setup.md` is missing):
+
+```bash
+# terminal 1
+cd custsuppcrew && source .venv/bin/activate && stub-telemetry
+
+# terminal 2
+cd custsuppcrew && source .venv/bin/activate && investigate-api
+
+# terminal 3
+cd frontend && npm install && npm run dev
+```
+
+Load `custsuppcrew/.env` for the API process (operator-provided key). Open `http://127.0.0.1:3000`. Same health URLs as Compose.
+
+### Rollback
+
+SAD / PRD: disable the agent endpoint; incident response continues on existing PagerDuty/Slack. MVP tools do not mutate the cluster, so there is **no agent-applied cluster rollback** (AC-009).
+
+| Situation | Action |
+| --- | --- |
+| Stop spending LLM / stop accepting investigations | Compose: `docker compose stop api`. Processes: stop `investigate-api`. UI and stubs can stay up; new kickoffs fail. |
+| Stop the whole local stack | Compose: `docker compose down`. Processes: stop Vite, `investigate-api`, `stub-telemetry`. |
+| Bad image or config after an authorized `up --build` | `docker compose down`, `git checkout` the last known-good commit, then (only if authorized) `up --build` again. |
+| In-flight investigation | In-process only. Stopping `api` drops the snapshot. History in the Vite UI is session-local and is lost on refresh. |
+| Cluster / customer IR | Out of band. This MVP does not page, acknowledge, or roll back workloads. |
+
+Do not roll forward by publishing ports to `0.0.0.0` to “fix” connectivity.
+
+### Operator checks (after an authorized start)
+
+| Check | Expect |
+| --- | --- |
+| `curl -sS http://127.0.0.1:8081/health` | 200 |
+| `curl -sS http://127.0.0.1:8000/health` | 200 |
+| `curl -sS -o /dev/null -w '%{http_code}' http://127.0.0.1:3000/` | 200 |
+| Empty `POST /v1/investigations` | 400 `VALIDATION_ERROR` (no LLM) |
+| Second kickoff while one runs | 429 `BUSY` |
+
+### Known local issues
+
+- AC-006 `report.parse_error` on some live aggregates — UI may show specialist Key Insights only.
+- AC-012 Bearer redact overlap in traces.
+- Missing or invalid `ANTHROPIC_API_KEY` → kickoff `LLM_UNAVAILABLE`; health still 200.
+- Port 3000/8000/8081 already bound → Compose or process start fails; stop the other stack first.
+- Compose API must keep `STUB_*_BASE_URL=http://stubs:8081`. Pointing those at `127.0.0.1:8081` **inside** the `api` container will miss the stub service.
 
 ## Future Work (ops)
 
-`ruff` / ESLint once owning personas add configs; Compose image build in CI; pin `uv` image digest; monitoring/APM; autoscaling; multi-region; AgentCore Runtime; optional `DEMO_API_TOKEN` before any non-loopback API; drop `chromadb` pip-audit ignores when CrewAI ships a fixed release.
+`ruff` / ESLint once owning personas add configs; Compose image build in CI; pin `uv` image digest; monitoring/APM; autoscaling; multi-region; AgentCore Runtime; optional `DEMO_API_TOKEN` before any non-loopback API; drop `chromadb` pip-audit ignores when CrewAI ships a fixed release; produce `setup.md` (`@project.mgr`).
 
 ## Next Deliver commands
 
-1. `@devops.eng *document-deploy` — complete runbook (env matrix, access, rollback).
-2. `@devops.eng *document-user-guide` — `user-guide.md` (config `documentation.require_user_guide: true`).
+None. Phase 3 persona actions are complete (`prepare-release`, `define-deploy`, `configure-cicd`, `document-deploy`, `document-user-guide`). User guide: `project-context/3.deliver/user-guide.md`.
 
-**Live deploy authorization:** not requested; not executed. Compose stack was validated with `docker compose config` only. CI was written, not triggered from this session.
+**Live deploy authorization:** not requested; not executed. Compose was validated with `docker compose config` only. CI config exists; this session did not start workflows or containers.
 
 ## Diagnostic
 
@@ -173,7 +266,7 @@ None blocking local packaging. `setup.md` missing is a documentation gap, not a 
 6. `project-context/1.define/prd.md`
 7. `project-context/1.define/sad.md` §5 DevOps & Deployment
 8. `aamad.config.yml`
-9. `.cursor/agents/devops-eng.md` (`*prepare-release`, `*define-deploy`, `*configure-cicd`)
+9. `.cursor/agents/devops-eng.md` (`*prepare-release`, `*define-deploy`, `*configure-cicd`, `*document-deploy`, `*document-user-guide`)
 10. `custsuppcrew/.env.example`, `frontend/.env.example`
 11. `.cursor/rules/adapter-crewai.mdc`, `.cursor/rules/delivery-workflow.mdc`
 
@@ -182,8 +275,8 @@ None blocking local packaging. `setup.md` missing is a documentation gap, not a 
 1. Operator accepts QA AC-006/AC-012 gaps and security S-03/S-04 for **local** `0.1.0`.
 2. Vite on `:3000` is the MVP UI (SAD AD-05 Next.js deferred). Compose serves the Vite production build via nginx, still on host port 3000.
 3. Hosting for this increment is developer-laptop Compose with loopback publish. Cloud / AgentCore remains Future Work.
-4. `setup.md` absence is acceptable; runbook will cite integration.md and this compose definition.
-5. No operator authorization for `docker compose up`, cloud provision, or production deploy.
+4. `setup.md` absence is acceptable; this runbook cites `backend.md` / `integration.md` and the compose definition.
+5. No operator authorization for `docker compose up`, cloud provision, or production deploy. Assumed host: developer laptop; ports `127.0.0.1:3000` / `:8000` / `:8081`; health `GET /` and `GET /health` as in Hosting.
 6. In-container `0.0.0.0` plus `127.0.0.1` host publish satisfies S-04 without changing application `run_api` / `run_stubs` bind code.
 7. `ghcr.io/astral-sh/uv:latest` is acceptable for MVP reproducibility; pin a digest in a later increment if required.
 8. Frontend has no ESLint script; `npm run typecheck` is the lint+type stage. Python has no `ruff` lock entry; `compileall` is the lint stage.
@@ -198,7 +291,7 @@ None blocking local packaging. `setup.md` missing is a documentation gap, not a 
 
 ## Halt and Report
 
-None. CI config recorded. Runbook and user-guide are subsequent actions. Live stack start and any deploy job remain blocked until the operator authorizes them.
+None. User guide recorded. Live stack start and any deploy job remain blocked until the operator authorizes them.
 
 ## Audit
 
@@ -224,4 +317,20 @@ None. CI config recorded. Runbook and user-guide are subsequent actions. Live st
 - **Resolved runtime:** `crewai` (`AAMAD_TARGET_RUNTIME` unset; `aamad.config.yml` `runtime.target: crewai`)
 - **Prompt Trace:** Omitted. No production-facing model execution; no secret values copied into this artifact.
 - **Tooling:** Read SAD §5 CI/CD, qa.md test commands, security.md I-06 / `dependency_audit`, package.json, pyproject.toml. Wrote `.github/workflows/ci.yml`. Local checks: `compileall` ok; `npm audit` 0; `uv export` ok; `uvx pip-audit` reported four unfixed `chromadb` findings (IDs recorded, no exploit detail). Did not push a workflow run. Did not add a deploy job. Did not modify application or agent business logic.
+- **Prohibited actions:** No live infrastructure, no secret values, no FE/BE code changes.
+
+- **Timestamp:** 2026-08-30T13:50:00-04:00
+- **Persona id:** `devops-eng`
+- **Action:** `document-deploy`
+- **Resolved runtime:** `crewai` (`AAMAD_TARGET_RUNTIME` unset; `aamad.config.yml` `runtime.target: crewai`)
+- **Prompt Trace:** Omitted. No production-facing model execution; no secret values copied into this artifact.
+- **Tooling:** Read SAD §5 rollback/hosting, PRD FR-207 / availability, security AD-09/S-01/S-03/S-04, `.env.example` names, integration.md local run, existing deploy.md. Expanded runbook sections only. Did not run `docker compose up`. Did not modify application or agent business logic.
+- **Prohibited actions:** No live infrastructure, no secret values, no FE/BE code changes.
+
+- **Timestamp:** 2026-08-30T13:55:00-04:00
+- **Persona id:** `devops-eng`
+- **Action:** `document-user-guide`
+- **Resolved runtime:** `crewai` (`AAMAD_TARGET_RUNTIME` unset; `aamad.config.yml` `runtime.target: crewai`)
+- **Prompt Trace:** Omitted. No production-facing model execution; no secret values copied into this artifact.
+- **Tooling:** Read `.cursor/templates/user-guide-template.md`, PRD, frontend-functional-spec, integration.md, qa.md, deploy.md runbook. Wrote `project-context/3.deliver/user-guide.md`. Did not start services. Did not modify application or agent business logic.
 - **Prohibited actions:** No live infrastructure, no secret values, no FE/BE code changes.
