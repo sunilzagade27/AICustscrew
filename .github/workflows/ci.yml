@@ -1,0 +1,87 @@
+# Lint, test, and build only. Do not add deploy jobs without operator authorization.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend lint, test, audit
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: custsuppcrew
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up uv and Python
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: custsuppcrew/uv.lock
+
+      - name: Sync locked dependencies
+        run: uv sync --frozen --group dev
+
+      - name: Lint (compileall)
+        run: uv run python -m compileall -q -x guide_creator_flow src tests
+
+      - name: Test (pytest)
+        run: uv run pytest -q tests/test_unit_logic.py tests/test_stubs_and_tools.py tests/test_api.py
+
+      - name: Audit Python dependencies
+        run: |
+          uv export --frozen --no-dev --no-emit-workspace --no-hashes -o /tmp/requirements.txt
+          uvx pip-audit -r /tmp/requirements.txt \
+            --ignore-vuln PYSEC-2026-311 \
+            --ignore-vuln CVE-2026-45830 \
+            --ignore-vuln CVE-2026-45833 \
+            --ignore-vuln CVE-2026-45831
+
+  frontend:
+    name: Frontend lint, test, build, audit
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Lint and typecheck
+        run: npm run typecheck
+
+      - name: Test (unit)
+        run: npm run test:unit
+
+      - name: Test (integration mapper)
+        run: npm run test:integration
+
+      - name: Production build
+        run: npm run build
+        env:
+          VITE_API_BASE_URL: http://127.0.0.1:8000
+
+      - name: Audit npm dependencies
+        run: npm audit --audit-level=high

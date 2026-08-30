@@ -1,8 +1,8 @@
-# Deploy — Release readiness + deploy definition
+# Deploy — Release readiness, deploy definition, CI
 
 ## Summary
 
-Phase 3 Deliver continues after a **conditional** QA/security gate. `*prepare-release` recorded version `0.1.0` and scoped gaps. This increment is **`*define-deploy` only**: SAD §5 three-service Docker Compose, runtime-aligned images, loopback host publish. No CI workflow, no completed runbook, no user guide, and **no live `docker compose up`**.
+Phase 3 Deliver continues after a **conditional** QA/security gate. `*prepare-release` recorded version `0.1.0` and scoped gaps. `*define-deploy` added loopback Compose. This increment is **`*configure-cicd` only**: GitHub Actions lint, test, and build. No completed runbook, no user guide, **no live deploy**, and **no `docker compose up`**.
 
 **Release version:** `0.1.0` (from `custsuppcrew/pyproject.toml` and `frontend/package.json`).
 
@@ -85,6 +85,47 @@ SAD §5 smallest MVP host is **Docker Compose** (or equivalent local processes).
 - Start command is uvicorn over the existing FastAPI apps (`custsuppcrew.api:app`, `custsuppcrew.stubs.app:app`), not AgentCore (`agent_runtime:app` on 8080 — SAD optional AWS path, out of MVP).
 - Secrets: compose interpolates `ANTHROPIC_API_KEY`, `MODEL`, `LLM_TEMPERATURE` from the host / `--env-file`. No secret values in committed files.
 
+## CI scaffolding (`*configure-cicd`)
+
+SAD §5: lint, test, and build only. No deploy job. Workflow does not use repository secrets.
+
+| Item | Value |
+| --- | --- |
+| File | `.github/workflows/ci.yml` |
+| Triggers | `push` to `main`; all `pull_request` |
+| Permissions | `contents: read` |
+| Jobs | `backend` and `frontend` (parallel) |
+
+### Backend job (`custsuppcrew`, Python 3.12, `uv`)
+
+| Stage | Command |
+| --- | --- |
+| Install | `uv sync --frozen --group dev` |
+| Lint | `python -m compileall` on `src` and `tests` (excludes `guide_creator_flow`) |
+| Test | `pytest` on `tests/test_unit_logic.py`, `tests/test_stubs_and_tools.py`, `tests/test_api.py` (QA unit + API suites; no LLM kickoff) |
+| Audit | `uv export` + `uvx pip-audit` on prod lock |
+
+`ruff` is not in `uv.lock`. Adding it would need a style baseline from `@backend.eng`. `compileall` is the MVP syntax lint.
+
+`pip-audit` ignore list (CrewAI transitive `chromadb 1.1.1`, no fix version in the current lock): `PYSEC-2026-311`, `CVE-2026-45830`, `CVE-2026-45833`, `CVE-2026-45831`. New findings fail the job.
+
+### Frontend job (`frontend`, Node 22)
+
+| Stage | Command |
+| --- | --- |
+| Install | `npm ci` |
+| Lint / typecheck | `npm run typecheck` (`tsc -b --noEmit`). No ESLint in `package.json`. |
+| Test | `npm run test:unit` and `npm run test:integration` |
+| Build | `npm run build` with `VITE_API_BASE_URL=http://127.0.0.1:8000` |
+| Audit | `npm audit --audit-level=high` |
+
+### Not in CI
+
+- Live `docker compose up` or image push
+- Browser E2E
+- `ANTHROPIC_API_KEY` or any secret
+- Promotion to a host
+
 ## Required env var **names** (no values)
 
 From `custsuppcrew/.env.example` and `frontend/.env.example`:
@@ -109,15 +150,14 @@ Stop the `api` service (`docker compose stop api` or stop `investigate-api`). IR
 
 ## Future Work (ops)
 
-CI lint/test/build, `pip-audit` in pipeline, monitoring/APM, autoscaling, multi-region, AgentCore Runtime, pin `uv` image digest (compose currently uses `uv:latest`), optional `DEMO_API_TOKEN` before any non-loopback API.
+`ruff` / ESLint once owning personas add configs; Compose image build in CI; pin `uv` image digest; monitoring/APM; autoscaling; multi-region; AgentCore Runtime; optional `DEMO_API_TOKEN` before any non-loopback API; drop `chromadb` pip-audit ignores when CrewAI ships a fixed release.
 
 ## Next Deliver commands
 
-1. `@devops.eng *configure-cicd` — lint, test, and build only; no live deploy.
-2. `@devops.eng *document-deploy` — complete runbook (env matrix, access, rollback).
-3. `@devops.eng *document-user-guide` — `user-guide.md` (config `documentation.require_user_guide: true`).
+1. `@devops.eng *document-deploy` — complete runbook (env matrix, access, rollback).
+2. `@devops.eng *document-user-guide` — `user-guide.md` (config `documentation.require_user_guide: true`).
 
-**Live deploy authorization:** not requested; not executed. Compose stack was validated with `docker compose config` only.
+**Live deploy authorization:** not requested; not executed. Compose stack was validated with `docker compose config` only. CI was written, not triggered from this session.
 
 ## Diagnostic
 
@@ -133,7 +173,7 @@ None blocking local packaging. `setup.md` missing is a documentation gap, not a 
 6. `project-context/1.define/prd.md`
 7. `project-context/1.define/sad.md` §5 DevOps & Deployment
 8. `aamad.config.yml`
-9. `.cursor/agents/devops-eng.md` (`*prepare-release`, `*define-deploy`)
+9. `.cursor/agents/devops-eng.md` (`*prepare-release`, `*define-deploy`, `*configure-cicd`)
 10. `custsuppcrew/.env.example`, `frontend/.env.example`
 11. `.cursor/rules/adapter-crewai.mdc`, `.cursor/rules/delivery-workflow.mdc`
 
@@ -146,16 +186,19 @@ None blocking local packaging. `setup.md` missing is a documentation gap, not a 
 5. No operator authorization for `docker compose up`, cloud provision, or production deploy.
 6. In-container `0.0.0.0` plus `127.0.0.1` host publish satisfies S-04 without changing application `run_api` / `run_stubs` bind code.
 7. `ghcr.io/astral-sh/uv:latest` is acceptable for MVP reproducibility; pin a digest in a later increment if required.
+8. Frontend has no ESLint script; `npm run typecheck` is the lint+type stage. Python has no `ruff` lock entry; `compileall` is the lint stage.
+9. Four `chromadb` pip-audit IDs are ignored until an upstream fix; `@security.eng` can require them to be gating later.
 
 ## Open Questions
 
 1. Confirm version string `0.1.0` vs a dated `0.1.0-mvp` tag?
 2. ~~Scaffold Compose with API/stubs on `127.0.0.1` only (security S-04)?~~ **Resolved:** host ports are `127.0.0.1` in `docker-compose.yml`.
 3. Should AC-006 parse fix land before an authorized `compose up`, or ship `0.1.0` with the gap labeled?
+4. ~~Add `pip-audit` / `npm audit` to CI?~~ **Resolved:** both run in `.github/workflows/ci.yml`. `chromadb` IDs listed above are ignored.
 
 ## Halt and Report
 
-None. Deploy definition recorded. CI/runbook/user-guide are subsequent actions. Live stack start is blocked until the operator authorizes it.
+None. CI config recorded. Runbook and user-guide are subsequent actions. Live stack start and any deploy job remain blocked until the operator authorizes them.
 
 ## Audit
 
@@ -173,4 +216,12 @@ None. Deploy definition recorded. CI/runbook/user-guide are subsequent actions. 
 - **Resolved runtime:** `crewai` (`AAMAD_TARGET_RUNTIME` unset; `aamad.config.yml` `runtime.target: crewai`)
 - **Prompt Trace:** Omitted. No production-facing model execution; no secret values copied into this artifact.
 - **Tooling:** Read SAD §5, security.md S-01/S-03/S-04, pyproject.toml, existing `*prepare-release` deploy.md. Wrote `docker-compose.yml`, `custsuppcrew/Dockerfile`, `custsuppcrew/.dockerignore`, `frontend/Dockerfile`, `frontend/nginx.conf`, `frontend/.dockerignore`. Validated with `docker compose config` (exit 0; host_ip `127.0.0.1` on 8000/8081/3000). Did not run `docker compose up` or `build`. Did not modify application or agent business logic.
+- **Prohibited actions:** No live infrastructure, no secret values, no FE/BE code changes.
+
+- **Timestamp:** 2026-08-30T13:45:00-04:00
+- **Persona id:** `devops-eng`
+- **Action:** `configure-cicd`
+- **Resolved runtime:** `crewai` (`AAMAD_TARGET_RUNTIME` unset; `aamad.config.yml` `runtime.target: crewai`)
+- **Prompt Trace:** Omitted. No production-facing model execution; no secret values copied into this artifact.
+- **Tooling:** Read SAD §5 CI/CD, qa.md test commands, security.md I-06 / `dependency_audit`, package.json, pyproject.toml. Wrote `.github/workflows/ci.yml`. Local checks: `compileall` ok; `npm audit` 0; `uv export` ok; `uvx pip-audit` reported four unfixed `chromadb` findings (IDs recorded, no exploit detail). Did not push a workflow run. Did not add a deploy job. Did not modify application or agent business logic.
 - **Prohibited actions:** No live infrastructure, no secret values, no FE/BE code changes.
