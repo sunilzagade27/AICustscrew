@@ -5,3 +5,6 @@
 __pycache__/
 .DS_Store
 report.md
+
+# Nested CrewAI scaffold (own empty .git + local .env). Do not add as a submodule.
+src/custsuppcrew/guide_creator_flow/
