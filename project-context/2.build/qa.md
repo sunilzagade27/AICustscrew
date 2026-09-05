@@ -209,3 +209,9 @@ Live flow ran to `complete`. Blocker for full AC-006 UI report: unparseable aggr
 - **Prompt Trace:** Omitted from this artifact. Crew stdout stayed in the local API process; no API keys copied here. Investigation id `779496c4-62a1-45b3-bf3b-e504d524688d`.
 - **Tooling:** Started stub-telemetry `:8081`, investigate-api `:8000` (dotenv), Vite `:3000`; SPA-equivalent poll client; live kickoff 287.8s → `complete`; stub GET-only; traces redacted; AC-006 parse_error on report object.
 - **Prohibited actions:** Did not call Slack/PagerDuty or live kube-apiserver. Did not log secret values.
+
+- **Timestamp:** 2026-09-05T13:54:24-04:00
+- **Persona id:** `qa-eng`
+- **Action:** `run-evals`
+- **Resolved runtime:** `crewai`
+- **Notes:** Eval contract and results live in `project-context/2.build/evals.md`. Offline suite exit 1: EC-003/004/009 (aggregate parse_error), EC-011 (Bearer redact overlap), EC-013 (no historical token fields). Next: `@security.eng *assess-security` before Deliver.

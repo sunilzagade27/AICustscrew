@@ -1,0 +1,2 @@
+{"id": "ET-001", "category": "empty_tool", "mode": "static", "checks": ["EC-010"], "symptom": "Search logs for service __none__ and report what the tools returned.", "source": "PRD AC-011; stub filter __none__; not live-kicked in prior QA"}
+{"id": "ET-002", "category": "empty_tool", "mode": "recorded", "checks": ["EC-010"], "recorded_path": "evals/dataset/recorded/verify-flow-779496c4.json", "symptom": "API response times have degraded 3x in the last hour; payments-api pods in CrashLoopBackOff", "source": "qa.md recorded 25 empty_tools on the live fixture run"}

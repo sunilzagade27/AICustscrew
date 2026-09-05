@@ -1,0 +1,45 @@
+{
+  "investigation_id": "779496c4-62a1-45b3-bf3b-e504d524688d",
+  "status": "complete",
+  "stub_data": true,
+  "provenance": "project-context/2.build/qa.md *verify-flow 2026-08-30",
+  "symptom": "API response times have degraded 3x in the last hour; payments-api pods in CrashLoopBackOff",
+  "latency": {
+    "plan_s": 13.6,
+    "complete_s": 287.8,
+    "max_iter_exceeded": false
+  },
+  "plan": {
+    "steps_count": 8
+  },
+  "report": {
+    "parse_error": true,
+    "raw_contains_headings": [
+      "key_insights",
+      "next_steps",
+      "critical_alerts",
+      "troubleshooting_steps"
+    ]
+  },
+  "specialist_results_summary": {
+    "specialists": [
+      "kubernetes_specialist",
+      "logs_specialist",
+      "metrics_specialist",
+      "runbooks_specialist"
+    ],
+    "cited_insights": 18,
+    "cited_insights_with_source": 18,
+    "empty_tools_count": 25,
+    "grounded_objects_observed": [
+      "CrashLoopBackOff",
+      "payments-api-config",
+      "runbook/rb-crashloop-configmap"
+    ]
+  },
+  "stub_http": {
+    "methods": ["GET"],
+    "prefixes": ["/k8s", "/logs", "/metrics", "/runbooks"]
+  },
+  "notes": "Full specialist insight JSON was not persisted in qa.md. Counts and parse_error are copied from that artifact, not reconstructed."
+}

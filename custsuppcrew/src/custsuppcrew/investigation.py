@@ -42,6 +42,24 @@ class SingleFlight:
 FLIGHT = SingleFlight()
 
 
+def _usage_fields(result: Any) -> dict[str, Any] | None:
+    """Normalize CrewAI token usage for EC-013 traces (names only, no secrets)."""
+    usage = getattr(result, "token_usage", None)
+    if usage is None:
+        return None
+    if isinstance(usage, dict):
+        payload = usage
+    else:
+        payload = {
+            "input_tokens": getattr(usage, "prompt_tokens", None)
+            or getattr(usage, "input_tokens", None),
+            "output_tokens": getattr(usage, "completion_tokens", None)
+            or getattr(usage, "output_tokens", None),
+            "total_tokens": getattr(usage, "total_tokens", None),
+        }
+    return {key: value for key, value in payload.items() if value is not None} or None
+
+
 def new_investigation_id() -> str:
     return str(uuid4())
 
@@ -121,7 +139,7 @@ def run_kickoff(
     try:
         result = future.result(timeout=MAX_EXECUTION_SECONDS)
         snapshot = snapshot_from_result(result)
-        write_trace("kickoff_complete", {"ok": True})
+        write_trace("kickoff_complete", {"ok": True, "usage": _usage_fields(result)})
         return snapshot
     except FuturesTimeout as exc:
         code, message = "CREW_TIMEOUT", "investigation exceeded 600 second cap"
