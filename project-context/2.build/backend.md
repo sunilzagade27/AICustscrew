@@ -10,7 +10,7 @@ MVP CrewAI backend for the investigation-first SRE assistant: five YAML agents, 
 | --- | --- |
 | `*define-agents` | Done (prior increment) |
 | `*develop-be` | Done — stub OpenAPI surfaces + GET-only CrewAI tools bound per specialist |
-| `*implement-endpoint` | Done — `GET /health`, `POST /v1/investigations`, `GET /v1/investigations/{id}` |
+| `*implement-endpoint` | Done — `GET /health`, `POST /v1/investigations` (SSE / blocking JSON / 202 poll), `GET /v1/investigations/{id}` |
 | `*document-backend` | Done — this file |
 | `*stub-nonmvp` | Not run as a command; leftover template YAML files remain unused |
 
@@ -54,7 +54,7 @@ Tools issue **HTTP GET only** to `STUB_*_BASE_URL` (default `http://127.0.0.1:80
 | POST | `/v1/investigations` | Body `{ "symptom": string }`; empty/whitespace → 400 `VALIDATION_ERROR` (AC-002); max 8192 chars |
 | GET | `/v1/investigations/{id}` | In-process snapshot |
 
-POST default: SSE events `started`, `plan`, `specialist_result`, `report`, `error`. JSON snapshot: `Accept: application/json` or `?stream=false`. One investigation per process (429 if busy). Kickoff timeout 600s → `CREW_TIMEOUT`. LLM/auth failures → `LLM_UNAVAILABLE`.
+POST default: SSE events `started`, `plan`, `specialist_result`, `report`, `error`. JSON snapshot: `Accept: application/json` or `?stream=false` (blocks until complete). Polling start: `?wait=false` → **202** `{ investigation_id, status: running }` then `GET /v1/investigations/{id}` (store updates as plan/specialist/report events arrive). Empty/whitespace symptom → **400 `VALIDATION_ERROR`** and does **not** take the single-flight slot. One investigation per process → **429 `BUSY`** until the kickoff thread finishes (including after a 600s cap). Kickoff cap **600s** → `CREW_TIMEOUT` without waiting for executor shutdown. LLM temperature **0.1** when the model allows it (Claude); `gpt-5` / `o-series` omit temperature because those APIs reject non-default values. LLM/auth failures → `LLM_UNAVAILABLE`.
 
 Redacted traces: `project-context/2.build/logs/backend-trace.jsonl`.
 
@@ -69,7 +69,7 @@ investigate-api         # :8000  (separate terminal)
 
 JSON example: `curl -H 'accept: application/json' -d '{"symptom":"..."}' http://127.0.0.1:8000/v1/investigations?stream=false`
 
-Tests: `cd custsuppcrew && .venv/bin/pytest -q` (11 passed; no LLM kickoff).
+Tests: `cd custsuppcrew && .venv/bin/pytest -q` (15 passed; no LLM kickoff).
 
 ## Frontend gap (for `@integration.eng`)
 
@@ -95,23 +95,22 @@ Live k8s/log/metrics/runbook connectors (FR-101); AgentCore (FR-102); plan edit;
 3. Fixture narrative is synthetic and labeled `stub_data` (AC-008); not customer truth.
 4. Exact model id defaults to `anthropic/claude-sonnet-4-20250514` via `MODEL`; override in `.env`.
 5. CORS allows local Vite (`5173`) and SAD Next.js (`3000`).
-6. 429 busy uses error code `INTERNAL` (SAD enum has no BUSY code).
+6. 429 busy uses error code `BUSY` (SAD: “code indicating busy”).
+7. Temperature 0.1 is applied only when the selected `MODEL` supports it.
 
 ## Open Questions
 
 1. Produce `setup.md` before Deliver?
 2. Delete unused `agentsSRE.y` / `tasksSRE.y`?
-3. Should 429 use a dedicated code, or keep `INTERNAL`?
+3. ~~Should 429 use a dedicated code, or keep `INTERNAL`?~~ **Closed:** `BUSY`.
 4. Align FE poll contract vs SAD SSE in integration epic?
 
 ## Audit
 
-- **Timestamp:** 2026-08-24T19:55:00-04:00
+- **Timestamp:** 2026-08-26T11:35:00-04:00
 - **Persona id:** `backend-eng`
-- **Action:** `develop-be`, `implement-endpoint`, `document-backend`
-- **Resolved runtime:** `crewai` (`AAMAD_TARGET_RUNTIME` unset). CrewAI 1.15.17. LLM temperature 0.1; default model `anthropic/claude-sonnet-4-20250514`.
-- **Prompt Trace:** Omitted from this artifact. Runtime traces (redacted) go to `project-context/2.build/logs/backend-trace.jsonl` on kickoff. No customer systems contacted. Did not read `.env` secret values.
-- **Tooling:** Implemented stub FastAPI + GET tools + investigation API; `uv add fastapi uvicorn httpx pytest`; `.venv/bin/pytest -q` → 11 passed; instantiated `Custsuppcrew().crew()` and verified tool names. No live `kickoff()` (would call Anthropic).
-- **Determinism:** Fixture JSON is static. Crew outputs remain LLM-dependent.
-- **Config honored:** Python/CrewAI, no committed secrets, files under 400 lines, unit tests mapped to AC-002/007/009/011.
-- **Prohibited actions:** No database, analytics, live cluster credentials, or mutating tools.
+- **Action:** `implement-endpoint`
+- **Resolved runtime:** `crewai` (`AAMAD_TARGET_RUNTIME` unset; `aamad.config.yml` `runtime.target: crewai`). CrewAI 1.15.17.
+- **Prompt Trace:** Omitted. No production-facing model execution in this increment; no `.env` secret values copied into artifacts.
+- **Tooling:** FastAPI `POST /v1/investigations` SSE + blocking JSON + `wait=false` 202 poll; GET snapshot now applies plan/specialist/report events; `.venv/bin/pytest -q` → 15 passed.
+- **Prohibited actions:** Did not wire the Vite frontend (integration epic). No database, analytics, live cluster credentials, or mutating tools.

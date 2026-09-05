@@ -1,0 +1,2 @@
+{"id": "VE-001", "category": "validation_edge", "mode": "api", "checks": ["AC-002"], "symptom": "", "expect_http": 400, "expect_code": "VALIDATION_ERROR", "source": "PRD AC-002; empty intake must not kick off a crew"}
+{"id": "VE-002", "category": "validation_edge", "mode": "api", "checks": ["AC-002"], "symptom": "   ", "expect_http": 400, "expect_code": "VALIDATION_ERROR", "source": "PRD AC-002 whitespace"}

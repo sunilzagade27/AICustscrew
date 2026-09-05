@@ -1,0 +1,69 @@
+{"ts": "2026-08-25T00:23:47.719727+00:00", "event": "kickoff_start", "payload": {"symptom_len": 14}}
+{"ts": "2026-08-25T00:23:47.774035+00:00", "event": "kickoff_error", "payload": {"code": "CREW_TIMEOUT"}}
+{"ts": "2026-08-25T03:52:40.415419+00:00", "event": "kickoff_start", "payload": {"symptom_len": 14}}
+{"ts": "2026-08-25T03:52:40.466010+00:00", "event": "kickoff_error", "payload": {"code": "CREW_TIMEOUT"}}
+{"ts": "2026-08-25T03:53:17.344840+00:00", "event": "kickoff_error", "payload": {"code": "LLM_UNAVAILABLE"}}
+{"ts": "2026-08-25T03:55:50.266763+00:00", "event": "kickoff_start", "payload": {"symptom_len": 47}}
+{"ts": "2026-08-25T03:55:51.185066+00:00", "event": "kickoff_error", "payload": {"code": "INTERNAL"}}
+{"ts": "2026-08-25T03:56:59.337776+00:00", "event": "kickoff_start", "payload": {"symptom_len": 47}}
+{"ts": "2026-08-25T04:00:59.152919+00:00", "event": "kickoff_complete", "payload": {"ok": true}}
+{"ts": "2026-08-25T04:06:19.121347+00:00", "event": "kickoff_start", "payload": {"symptom_len": 14}}
+{"ts": "2026-08-25T04:06:19.175899+00:00", "event": "kickoff_error", "payload": {"code": "CREW_TIMEOUT"}}
+{"ts": "2026-08-26T15:30:00.414559+00:00", "event": "kickoff_start", "payload": {"symptom_len": 14}}
+{"ts": "2026-08-26T15:30:00.468971+00:00", "event": "kickoff_error", "payload": {"code": "CREW_TIMEOUT"}}
+{"ts": "2026-08-26T15:47:34.424889+00:00", "event": "kickoff_start", "payload": {"symptom_len": 91}}
+{"ts": "2026-08-26T15:47:47.266756+00:00", "event": "task_complete", "payload": {"task": "task_plan", "event": "plan", "agent": "SRE investigation coordinator\n"}}
+{"ts": "2026-08-26T15:48:29.490005+00:00", "event": "task_complete", "payload": {"task": "task_kubernetes", "event": "specialist_result", "agent": "Kubernetes infrastructure investigator\n"}}
+{"ts": "2026-08-26T15:49:25.515963+00:00", "event": "task_complete", "payload": {"task": "task_logs", "event": "specialist_result", "agent": "Application log investigator\n"}}
+{"ts": "2026-08-26T15:50:03.035818+00:00", "event": "task_complete", "payload": {"task": "task_metrics", "event": "specialist_result", "agent": "Performance metrics investigator\n"}}
+{"ts": "2026-08-26T15:50:55.707294+00:00", "event": "task_complete", "payload": {"task": "task_runbooks", "event": "specialist_result", "agent": "Operational runbook investigator\n"}}
+{"ts": "2026-08-26T15:52:00.191346+00:00", "event": "task_complete", "payload": {"task": "task_aggregate", "event": "report", "agent": "SRE investigation coordinator\n"}}
+{"ts": "2026-08-26T15:52:00.204759+00:00", "event": "kickoff_complete", "payload": {"ok": true}}
+{"ts": "2026-08-26T15:52:45.253748+00:00", "event": "kickoff_start", "payload": {"symptom_len": 33}}
+{"ts": "2026-08-26T15:52:52.621588+00:00", "event": "task_complete", "payload": {"task": "task_plan", "event": "plan", "agent": "SRE investigation coordinator\n"}}
+{"ts": "2026-08-26T15:53:08.661313+00:00", "event": "task_complete", "payload": {"task": "task_kubernetes", "event": "specialist_result", "agent": "Kubernetes infrastructure investigator\n"}}
+{"ts": "2026-08-26T15:53:34.043818+00:00", "event": "task_complete", "payload": {"task": "task_logs", "event": "specialist_result", "agent": "Application log investigator\n"}}
+{"ts": "2026-08-26T15:54:53.981767+00:00", "event": "task_complete", "payload": {"task": "task_metrics", "event": "specialist_result", "agent": "Performance metrics investigator\n"}}
+{"ts": "2026-08-26T15:55:21.698244+00:00", "event": "task_complete", "payload": {"task": "task_runbooks", "event": "specialist_result", "agent": "Operational runbook investigator\n"}}
+{"ts": "2026-08-26T15:56:21.199659+00:00", "event": "task_complete", "payload": {"task": "task_aggregate", "event": "report", "agent": "SRE investigation coordinator\n"}}
+{"ts": "2026-08-26T15:56:21.211458+00:00", "event": "kickoff_complete", "payload": {"ok": true}}
+{"ts": "2026-08-28T16:16:18.190908+00:00", "event": "kickoff_start", "payload": {"symptom_len": 14}}
+{"ts": "2026-08-28T16:16:18.246127+00:00", "event": "kickoff_error", "payload": {"code": "CREW_TIMEOUT"}}
+{"ts": "2026-08-28T16:46:59.627791+00:00", "event": "kickoff_start", "payload": {"symptom_len": 45}}
+{"ts": "2026-08-28T16:47:11.876623+00:00", "event": "task_complete", "payload": {"task": "task_plan", "event": "plan", "agent": "SRE investigation coordinator\n"}}
+{"ts": "2026-08-28T16:47:49.690994+00:00", "event": "task_complete", "payload": {"task": "task_kubernetes", "event": "specialist_result", "agent": "Kubernetes infrastructure investigator\n"}}
+{"ts": "2026-08-28T16:48:50.268583+00:00", "event": "task_complete", "payload": {"task": "task_logs", "event": "specialist_result", "agent": "Application log investigator\n"}}
+{"ts": "2026-08-28T16:49:36.773681+00:00", "event": "task_complete", "payload": {"task": "task_metrics", "event": "specialist_result", "agent": "Performance metrics investigator\n"}}
+{"ts": "2026-08-28T16:50:37.743413+00:00", "event": "task_complete", "payload": {"task": "task_runbooks", "event": "specialist_result", "agent": "Operational runbook investigator\n"}}
+{"ts": "2026-08-28T16:51:41.725920+00:00", "event": "task_complete", "payload": {"task": "task_aggregate", "event": "report", "agent": "SRE investigation coordinator\n"}}
+{"ts": "2026-08-28T16:51:41.746584+00:00", "event": "kickoff_complete", "payload": {"ok": true}}
+{"ts": "2026-08-29T02:38:18.768042+00:00", "event": "kickoff_start", "payload": {"symptom_len": 41}}
+{"ts": "2026-08-29T02:38:28.328318+00:00", "event": "task_complete", "payload": {"task": "task_plan", "event": "plan", "agent": "SRE investigation coordinator\n"}}
+{"ts": "2026-08-29T02:38:45.207153+00:00", "event": "task_complete", "payload": {"task": "task_kubernetes", "event": "specialist_result", "agent": "Kubernetes infrastructure investigator\n"}}
+{"ts": "2026-08-29T02:39:20.535344+00:00", "event": "task_complete", "payload": {"task": "task_logs", "event": "specialist_result", "agent": "Application log investigator\n"}}
+{"ts": "2026-08-29T02:39:46.348119+00:00", "event": "task_complete", "payload": {"task": "task_metrics", "event": "specialist_result", "agent": "Performance metrics investigator\n"}}
+{"ts": "2026-08-29T02:40:18.723030+00:00", "event": "task_complete", "payload": {"task": "task_runbooks", "event": "specialist_result", "agent": "Operational runbook investigator\n"}}
+{"ts": "2026-08-29T02:41:00.286091+00:00", "event": "task_complete", "payload": {"task": "task_aggregate", "event": "report", "agent": "SRE investigation coordinator\n"}}
+{"ts": "2026-08-29T02:41:00.298421+00:00", "event": "kickoff_complete", "payload": {"ok": true}}
+{"ts": "2026-08-30T14:46:31.946967+00:00", "event": "kickoff_start", "payload": {"symptom_len": 14}}
+{"ts": "2026-08-30T14:46:32.001886+00:00", "event": "kickoff_error", "payload": {"code": "CREW_TIMEOUT"}}
+{"ts": "2026-08-30T14:47:24.119338+00:00", "event": "kickoff_start", "payload": {"symptom_len": 14}}
+{"ts": "2026-08-30T14:47:24.171141+00:00", "event": "kickoff_error", "payload": {"code": "CREW_TIMEOUT"}}
+{"ts": "2026-08-30T14:49:26.693333+00:00", "event": "kickoff_start", "payload": {"symptom_len": 14}}
+{"ts": "2026-08-30T14:49:26.744602+00:00", "event": "kickoff_error", "payload": {"code": "CREW_TIMEOUT"}}
+{"ts": "2026-08-30T14:52:08.215615+00:00", "event": "kickoff_start", "payload": {"symptom_len": 91}}
+{"ts": "2026-08-30T14:52:20.525842+00:00", "event": "task_complete", "payload": {"task": "task_plan", "event": "plan", "agent": "SRE investigation coordinator\n"}}
+{"ts": "2026-08-30T14:53:00.217264+00:00", "event": "task_complete", "payload": {"task": "task_kubernetes", "event": "specialist_result", "agent": "Kubernetes infrastructure investigator\n"}}
+{"ts": "2026-08-30T14:54:00.538403+00:00", "event": "task_complete", "payload": {"task": "task_logs", "event": "specialist_result", "agent": "Application log investigator\n"}}
+{"ts": "2026-08-30T14:54:45.265316+00:00", "event": "task_complete", "payload": {"task": "task_metrics", "event": "specialist_result", "agent": "Performance metrics investigator\n"}}
+{"ts": "2026-08-30T14:55:49.473975+00:00", "event": "task_complete", "payload": {"task": "task_runbooks", "event": "specialist_result", "agent": "Operational runbook investigator\n"}}
+{"ts": "2026-08-30T14:56:54.993918+00:00", "event": "task_complete", "payload": {"task": "task_aggregate", "event": "report", "agent": "SRE investigation coordinator\n"}}
+{"ts": "2026-08-30T14:56:55.004752+00:00", "event": "kickoff_complete", "payload": {"ok": true}}
+{"ts": "2026-08-30T15:05:10.334673+00:00", "event": "kickoff_start", "payload": {"symptom_len": 37}}
+{"ts": "2026-08-30T15:05:20.446729+00:00", "event": "task_complete", "payload": {"task": "task_plan", "event": "plan", "agent": "SRE investigation coordinator\n"}}
+{"ts": "2026-08-30T15:05:50.567703+00:00", "event": "task_complete", "payload": {"task": "task_kubernetes", "event": "specialist_result", "agent": "Kubernetes infrastructure investigator\n"}}
+{"ts": "2026-08-30T15:06:25.325182+00:00", "event": "task_complete", "payload": {"task": "task_logs", "event": "specialist_result", "agent": "Application log investigator\n"}}
+{"ts": "2026-08-30T15:06:59.200122+00:00", "event": "task_complete", "payload": {"task": "task_metrics", "event": "specialist_result", "agent": "Performance metrics investigator\n"}}
+{"ts": "2026-08-30T15:08:02.390203+00:00", "event": "task_complete", "payload": {"task": "task_runbooks", "event": "specialist_result", "agent": "Operational runbook investigator\n"}}
+{"ts": "2026-08-30T15:09:07.917563+00:00", "event": "task_complete", "payload": {"task": "task_aggregate", "event": "report", "agent": "SRE investigation coordinator\n"}}
+{"ts": "2026-08-30T15:09:07.934526+00:00", "event": "kickoff_complete", "payload": {"ok": true}}

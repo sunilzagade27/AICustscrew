@@ -160,6 +160,16 @@ button:disabled {
   letter-spacing: 0.04em;
 }
 
+.plan-preview {
+  margin: 0.75rem 0 0;
+  padding: 0.75rem;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  white-space: pre-wrap;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
 .stub-banner {
   background: var(--stub);
   border: 1px solid var(--stub-border);
@@ -198,4 +208,8 @@ button:disabled {
 
 .history-item.active {
   border-color: var(--accent);
+}
+
+.future-work {
+  font-size: 0.85rem;
 }

@@ -1,0 +1,72 @@
+# Local MVP stack (SAD §5). Do not `docker compose up` without operator intent.
+# Host ports are loopback-only (security S-04). Copy custsuppcrew/.env.example
+# to custsuppcrew/.env and set ANTHROPIC_API_KEY before starting.
+
+name: aicustscrew
+
+services:
+  stubs:
+    build:
+      context: ./custsuppcrew
+      dockerfile: Dockerfile
+    command: ["uvicorn", "custsuppcrew.stubs.app:app", "--host", "0.0.0.0", "--port", "8081"]
+    ports:
+      - "127.0.0.1:8081:8081"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8081/health', timeout=3)",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+
+  api:
+    build:
+      context: ./custsuppcrew
+      dockerfile: Dockerfile
+    command: ["uvicorn", "custsuppcrew.api:app", "--host", "0.0.0.0", "--port", "8000"]
+    environment:
+      STUB_K8S_BASE_URL: http://stubs:8081
+      STUB_LOGS_BASE_URL: http://stubs:8081
+      STUB_METRICS_BASE_URL: http://stubs:8081
+      STUB_RUNBOOKS_BASE_URL: http://stubs:8081
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      MODEL: ${MODEL:-anthropic/claude-sonnet-4-20250514}
+      LLM_TEMPERATURE: ${LLM_TEMPERATURE:-0.1}
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      stubs:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: http://127.0.0.1:8000
+    ports:
+      - "127.0.0.1:3000:80"
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/"]
+      interval: 10s
+      timeout: 5s
+      retries: 6

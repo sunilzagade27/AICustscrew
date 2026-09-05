@@ -1,0 +1,1 @@
+{"id": "SS-001", "category": "static_system", "mode": "static", "checks": ["EC-008", "EC-011", "EC-012", "EC-013"], "symptom": "", "source": "SAD EC-008/011/012/013; tool bind, traces, usage-log presence"}

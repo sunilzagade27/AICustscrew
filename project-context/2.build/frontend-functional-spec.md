@@ -10,7 +10,7 @@
 | Runtime | N/A for pure UI stubs; backend target remains `crewai` per config |
 | Traceability | PRD FR-001–FR-008, AC-001/AC-002; SAD §3 Frontend; History maps to deferred FR-105/FR-106 as session stub |
 
-This spec defines the MVP frontend for the Critical Research Workflow. Services are **stubs** until `@integration.eng` wires live APIs.
+This spec defines the MVP frontend for the Critical Research Workflow. `@integration.eng` wires `startRun` / `getRunStatus` to the CrewAI investigation API (`POST /v1/investigations?wait=false` + `GET /v1/investigations/{id}`).
 
 ---
 
@@ -54,20 +54,24 @@ Illegal transitions are no-ops and logged in the console in development.
 
 ## 3. Results
 
-Shown when FSM is `done`.
+Shown when FSM is `done`. Mapped from the investigation snapshot `report` (PRD AC-006). Empty sections render **No findings.**
 
 | Field | Description |
 | --- | --- |
-| `runId` | Investigation / run identifier |
-| `summary` | Short operational summary (stub text) |
-| `findings` | List of specialist-style finding lines (stub) |
-| `sources` | Source IDs for grounding (stub IDs, e.g. `stub-k8s-1`) |
-| `completedAt` | ISO timestamp |
+| `runId` | Investigation / run identifier (`investigation_id`) |
+| `keyInsights` | Report `key_insights[]` (fallback: specialist findings) |
+| `nextSteps` | Report `next_steps[]`; `executed: false` shown as not executed |
+| `criticalAlerts` | Report `critical_alerts[]` |
+| `troubleshootingSteps` | Report `troubleshooting_steps[]` |
+| `sources` | Citation IDs from report lines and specialist findings |
+| `completedAt` | ISO timestamp (client) |
+| `stubData` | From snapshot `stub_data` (MVP true) |
 
 **UX**
 
 - Results panel replaces/follows the Run panel on the same route.
-- Stub banner: “Demo / stub data — not live cluster telemetry.”
+- Stub banner when `stubData` is true: “Demo / stub data — not live cluster telemetry.”
+- Headings: Key Insights, Next Steps, Critical Alerts, Troubleshooting Steps (AC-006).
 - Primary action: “New research run” → `RESET` → Inputs.
 
 ---
@@ -88,9 +92,11 @@ Shown when FSM is `done`.
 
 - **Stack**: React + TypeScript (Vite). Single route `/`.
 - **Theme**: minimal; system preference (`ui.theme: system`).
-- **Services** (stub): `src/services/runService.ts` — `startRun`, `getRunStatus`.
+- **Services**: `src/services/runService.ts` — `startRun` maps to `POST /v1/investigations?wait=false`; `getRunStatus` maps to `GET /v1/investigations/{id}`. Base URL: `VITE_API_BASE_URL` (default `http://127.0.0.1:8000`).
 - **FSM**: `src/fsm/runFsm.ts` — pure transition helper.
-- **No live CrewAI / FastAPI calls** in this epic.
+- **Poll**: 1500 ms while `running`; client abort after 610s (backend kickoff cap 600s).
+- **Dev server**: Vite `host: true`, `port: 3000`, `strictPort: true` so both `localhost` and `127.0.0.1` serve the SPA (CORS list in `api.py`).
+- **Live CrewAI / FastAPI**: yes, via the investigation API only (no Slack/PagerDuty/live cluster).
 
 ---
 
@@ -123,14 +129,15 @@ Update this file after **each commit** that changes frontend behavior or contrac
 
 1. Operator requested a **form + results** Critical Research Workflow on a single route; SAD §3 describes a **chat** composer. This MVP implements the form/results layout; chat-style composer remains an Open Question for alignment with `@frontend.eng` chat default.
 2. Vite + React SPA is used instead of Next.js App Router for the single-route stub shell; production may migrate to Next.js per SAD AD-05 without changing §1–§4 contracts.
-3. Stub `getRunStatus` completes after a short delay with canned findings (no LLM).
+3. `getRunStatus` polls the investigation snapshot until `complete`/`failed` (or client 610s timeout).
 4. History is session-local only and does not claim FR-105/FR-106 completeness.
 
 ## Open Questions
 
 1. Should the Inputs surface become the SAD `ChatComposer` (chat) while keeping the same FSM/services?
-2. Poll interval and timeout for live `getRunStatus` after integration?
+2. ~~Poll interval and timeout for live `getRunStatus` after integration?~~ **Closed:** 1500 ms poll, 610s client timeout (backend 600s cap).
 3. Should History survive refresh (localStorage) before durable backend history exists?
+4. ~~Should Results render AC-006 headings?~~ **Closed:** Yes — Key Insights / Next Steps / Critical Alerts / Troubleshooting Steps.
 
 ## Audit
 
@@ -139,3 +146,9 @@ Update this file after **each commit** that changes frontend behavior or contrac
 - **Timestamp:** 2026-08-17T15:37:00Z
 - **Resolved runtime:** N/A (UI stubs); config `runtime.target: crewai` unchanged
 - **Prompt Trace:** Omitted — documentation and scaffold only; no production-facing model calls
+
+- **Persona:** `integration-eng` (`@integration.eng`)
+- **Action:** `integrate-api` — Results contract mapped to snapshot `report` (AC-006); Vite host bind
+- **Timestamp:** 2026-08-28T12:20:00-04:00
+- **Resolved runtime:** `crewai`
+- **Prompt Trace:** Omitted — no production-facing model execution in this increment
